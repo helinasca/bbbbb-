@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MultiStream</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #1a1a24;
+    --border: #2a2a3a;
+    --accent: #7c3aed;
+    --accent2: #06b6d4;
+    --red: #ef4444;
+    --green: #22c55e;
+    --text: #e2e8f0;
+    --muted: #64748b;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    background-image: 
+      radial-gradient(ellipse at 20% 0%, rgba(124,58,237,0.15) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 100%, rgba(6,182,212,0.1) 0%, transparent 50%);
+  }
+
+  header {
+    padding: 2rem 3rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.8rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #7c3aed, #06b6d4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -1px;
+  }
+
+  .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: pulse 2s infinite;
+  }
+
+  .dot.off { background: var(--muted); box-shadow: none; animation: none; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 2.5rem 2rem;
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    gap: 2rem;
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.8rem;
+  }
+
+  .panel-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--muted);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 1.4rem;
+  }
+
+  /* Media Drop */
+  .drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 2.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+  }
+
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--accent);
+    background: rgba(124,58,237,0.05);
+  }
+
+  .drop-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+  .drop-icon {
+    font-size: 2.5rem;
+    margin-bottom: 0.8rem;
+  }
+
+  .drop-text { color: var(--muted); font-size: 0.85rem; line-height: 1.6; }
+  .drop-text strong { color: var(--text); }
+
+  .preview-area {
+    margin-top: 1.2rem;
+    border-radius: 10px;
+    overflow: hidden;
+    display: none;
+    position: relative;
+  }
+
+  .preview-area img, .preview-area video {
+    width: 100%;
+    max-height: 200px;
+    object-fit: contain;
+    background: #000;
+    border-radius: 10px;
+  }
+
+  .preview-label {
+    position: absolute;
+    top: 8px; left: 8px;
+    background: rgba(0,0,0,0.7);
+    color: var(--accent2);
+    font-size: 0.7rem;
+    padding: 3px 8px;
+    border-radius: 20px;
+    letter-spacing: 1px;
+  }
+
+  /* Keys */
+  .keys-list { display: flex; flex-direction: column; gap: 0.8rem; }
+
+  .key-row {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem;
+    display: grid;
+    grid-template-columns: 100px 1fr 1fr auto;
+    gap: 0.6rem;
+    align-items: center;
+    transition: border-color 0.2s;
+  }
+
+  .key-row.active { border-color: var(--green); }
+  .key-row.error { border-color: var(--red); }
+
+  .platform-badge {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: var(--accent2);
+  }
+
+  input[type="text"], input[type="password"] {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 0.5rem 0.8rem;
+    border-radius: 8px;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+    width: 100%;
+    transition: border-color 0.2s;
+  }
+
+  input:focus { outline: none; border-color: var(--accent); }
+  input::placeholder { color: var(--muted); }
+
+  .remove-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    width: 28px; height: 28px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1rem;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+
+  .remove-btn:hover { border-color: var(--red); color: var(--red); }
+
+  .add-key-btn {
+    margin-top: 0.8rem;
+    background: none;
+    border: 1px dashed var(--border);
+    color: var(--muted);
+    padding: 0.6rem;
+    border-radius: 8px;
+    cursor: pointer;
+    width: 100%;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.8rem;
+    transition: all 0.2s;
+  }
+
+  .add-key-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Bottom controls */
+  .controls { margin-top: 1.5rem; display: flex; gap: 1rem; }
+
+  .btn {
+    padding: 0.9rem 1.8rem;
+    border-radius: 10px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.95rem;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+    flex: 1;
+    letter-spacing: 0.5px;
+  }
+
+  .btn-start {
+    background: linear-gradient(135deg, var(--accent), #5b21b6);
+    color: white;
+    box-shadow: 0 4px 20px rgba(124,58,237,0.3);
+  }
+
+  .btn-start:hover { transform: translateY(-1px); box-shadow: 0 6px 25px rgba(124,58,237,0.4); }
+  .btn-start:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  .btn-stop {
+    background: rgba(239,68,68,0.15);
+    color: var(--red);
+    border: 1px solid rgba(239,68,68,0.3);
+  }
+
+  .btn-stop:hover { background: rgba(239,68,68,0.25); }
+  .btn-stop:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  /* Status */
+  .status-panel {
+    grid-column: 1 / -1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.8rem;
+  }
+
+  .status-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 1rem; }
+
+  .stat-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.2rem;
+  }
+
+  .stat-label { color: var(--muted); font-size: 0.7rem; letter-spacing: 2px; margin-bottom: 0.4rem; }
+  .stat-value { font-family: 'Syne', sans-serif; font-size: 1.8rem; font-weight: 800; }
+  .stat-value.green { color: var(--green); }
+  .stat-value.purple { color: var(--accent); }
+
+  .stream-tags { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
+
+  .stream-tag {
+    background: rgba(34,197,94,0.1);
+    border: 1px solid rgba(34,197,94,0.3);
+    color: var(--green);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  .tag-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 1.5s infinite; }
+
+  .log-area {
+    background: #050508;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem;
+    font-size: 0.75rem;
+    color: var(--muted);
+    max-height: 120px;
+    overflow-y: auto;
+    margin-top: 1rem;
+    line-height: 1.8;
+  }
+
+  .log-area .log-line { color: var(--accent2); }
+  .log-area .log-err { color: var(--red); }
+  .log-area .log-ok { color: var(--green); }
+
+  .ffmpeg-warning {
+    background: rgba(239,68,68,0.1);
+    border: 1px solid rgba(239,68,68,0.3);
+    border-radius: 10px;
+    padding: 1rem 1.2rem;
+    color: var(--red);
+    font-size: 0.8rem;
+    margin-bottom: 1rem;
+    display: none;
+    line-height: 1.7;
+  }
+
+  @media (max-width: 768px) {
+    main { grid-template-columns: 1fr; }
+    .key-row { grid-template-columns: 1fr 1fr; grid-template-rows: auto auto; }
+    .platform-badge { grid-column: 1; }
+    .remove-btn { grid-column: 2; justify-self: end; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">MULTISTREAM</div>
+  <div class="dot off" id="liveDot"></div>
+  <span style="font-size:0.75rem;color:var(--muted)" id="liveLabel">OFFLINE</span>
+</header>
+
+<main>
+  <!-- Sol: Medya -->
+  <div>
+    <div class="panel">
+      <div class="panel-title">📁 Medya Seç</div>
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="fileInput" accept="image/*,video/*">
+        <div class="drop-icon">🎬</div>
+        <div class="drop-text">
+          <strong>Fotoğraf veya Video Sürükle</strong><br>
+          ya da tıkla · JPG, PNG, MP4, MKV
+        </div>
+      </div>
+      <div class="preview-area" id="previewArea">
+        <span class="preview-label" id="previewLabel">FOTO</span>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:1.2rem">
+      <div class="panel-title">⚙️ Yayın Kontrol</div>
+      <div class="ffmpeg-warning" id="ffmpegWarn">
+        ⚠️ <strong>FFmpeg bulunamadı!</strong><br>
+        Yayın yapabilmek için FFmpeg gerekli.<br>
+        Windows: <strong>winget install ffmpeg</strong><br>
+        Mac: <strong>brew install ffmpeg</strong>
+      </div>
+      <div class="controls">
+        <button class="btn btn-start" id="startBtn" disabled>▶ BAŞLAT</button>
+        <button class="btn btn-stop" id="stopBtn" disabled>■ DURDUR</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sağ: Keyler -->
+  <div class="panel">
+    <div class="panel-title">🔑 Stream Keyler (Maks. 6)</div>
+    <div class="keys-list" id="keysList"></div>
+    <button class="add-key-btn" id="addKeyBtn">+ Platform Ekle</button>
+  </div>
+
+  <!-- Alt: Status -->
+  <div class="status-panel">
+    <div class="panel-title">📡 Yayın Durumu</div>
+    <div class="status-grid">
+      <div class="stat-box">
+        <div class="stat-label">AKTİF YAYINLAR</div>
+        <div class="stat-value green" id="activeCount">0</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">TOPLAM SÜRE</div>
+        <div class="stat-value purple" id="streamTime">00:00</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">MEDYA TÜRÜ</div>
+        <div class="stat-value" style="font-size:1rem;padding-top:0.4rem;color:var(--muted)" id="mediaType">—</div>
+      </div>
+    </div>
+    <div class="stream-tags" id="streamTags"></div>
+    <div class="log-area" id="logArea">
+      <span style="color:var(--muted)">// Sistem hazır. Medya seç ve keylerini gir.</span>
+    </div>
+  </div>
+</main>
+
+<script>
+const PLATFORMS = [
+  { name: 'Twitch', url: 'rtmp://live.twitch.tv/app' },
+  { name: 'YouTube', url: 'rtmp://a.rtmp.youtube.com/live2' },
+  { name: 'Facebook', url: 'rtmps://live-api-s.facebook.com:443/rtmp' },
+  { name: 'TikTok', url: 'rtmp://push.tiktok.com/live' },
+  { name: 'Kick', url: 'rtmp://fa723fc1b171.global-contribute.live-video.net/app' },
+  { name: 'Trovo', url: 'rtmp://livepush.trovo.live/primepush' },
+];
+
+let mediaFile = null;
+let mediaType = null;
+let savedPath = null;
+let streaming = false;
+let timerInterval = null;
+let seconds = 0;
+
+// Check FFmpeg
+async function checkFFmpeg() {
+  try {
+    const r = await fetch('/api/check-ffmpeg');
+    const d = await r.json();
+    if (!d.available) {
+      document.getElementById('ffmpegWarn').style.display = 'block';
+      log('FFmpeg bulunamadı!', 'err');
+    } else {
+      log('FFmpeg hazır ✓', 'ok');
+    }
+  } catch(e) {}
+}
+
+// Logging
+function log(msg, type = 'line') {
+  const area = document.getElementById('logArea');
+  const cls = type === 'err' ? 'log-err' : type === 'ok' ? 'log-ok' : 'log-line';
+  const time = new Date().toLocaleTimeString('tr-TR');
+  area.innerHTML += `<div class="${cls}">[${time}] ${msg}</div>`;
+  area.scrollTop = area.scrollHeight;
+}
+
+// File input
+const fileInput = document.getElementById('fileInput');
+const dropZone = document.getElementById('dropZone');
+
+fileInput.addEventListener('change', e => handleFile(e.target.files[0]));
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  handleFile(e.dataTransfer.files[0]);
+});
+
+async function handleFile(file) {
+  if (!file) return;
+  mediaFile = file;
+  mediaType = file.type.startsWith('image/') ? 'image' : 'video';
+
+  document.getElementById('mediaType').textContent = mediaType === 'image' ? '🖼 FOTOĞRAF' : '🎥 VİDEO';
+  document.getElementById('previewLabel').textContent = mediaType === 'image' ? 'FOTO' : 'VİDEO';
+
+  const preview = document.getElementById('previewArea');
+  preview.innerHTML = `<span class="preview-label" id="previewLabel">${mediaType === 'image' ? 'FOTO' : 'VİDEO'}</span>`;
+  const url = URL.createObjectURL(file);
+
+  if (mediaType === 'image') {
+    const img = document.createElement('img');
+    img.src = url;
+    preview.appendChild(img);
+  } else {
+    const vid = document.createElement('video');
+    vid.src = url; vid.controls = true; vid.muted = true;
+    preview.appendChild(vid);
+  }
+  preview.style.display = 'block';
+
+  log(`Dosya seçildi: ${file.name} (${(file.size/1024/1024).toFixed(1)} MB)`);
+  log('Dosya sunucuya yükleniyor...');
+
+  // Upload to server
+  try {
+    const res = await fetch('/api/save-file', {
+      method: 'POST',
+      headers: { 'Content-Type': file.type, 'x-filename': file.name },
+      body: await file.arrayBuffer()
+    });
+    const d = await res.json();
+    savedPath = d.path;
+    log('Dosya hazır ✓', 'ok');
+    checkStartReady();
+  } catch(e) {
+    log('Dosya yükleme hatası: ' + e.message, 'err');
+  }
+}
+
+// Keys
+let keyCount = 0;
+
+function addKey(platform = null) {
+  const list = document.getElementById('keysList');
+  if (list.children.length >= 6) return;
+
+  const idx = keyCount++;
+  const p = platform || PLATFORMS[list.children.length % PLATFORMS.length];
+
+  const row = document.createElement('div');
+  row.className = 'key-row';
+  row.dataset.idx = idx;
+  row.innerHTML = `
+    <select class="platform-select" style="background:var(--bg);border:1px solid var(--border);color:var(--accent2);padding:4px;border-radius:6px;font-size:0.7rem;font-family:monospace">
+      ${PLATFORMS.map(pl => `<option value="${pl.url}" ${pl.url === p.url ? 'selected' : ''}>${pl.name}</option>`).join('')}
+    </select>
+    <input type="text" class="rtmp-url" placeholder="RTMP URL" value="${p.url}">
+    <input type="password" class="stream-key" placeholder="Stream Key...">
+    <button class="remove-btn" onclick="removeKey(this)">×</button>
+  `;
+
+  row.querySelector('.platform-select').addEventListener('change', function() {
+    row.querySelector('.rtmp-url').value = this.value;
+  });
+
+  list.appendChild(row);
+
+  if (list.children.length >= 6) {
+    document.getElementById('addKeyBtn').style.opacity = '0.3';
+    document.getElementById('addKeyBtn').disabled = true;
+  }
+}
+
+function removeKey(btn) {
+  btn.closest('.key-row').remove();
+  document.getElementById('addKeyBtn').style.opacity = '1';
+  document.getElementById('addKeyBtn').disabled = false;
+  checkStartReady();
+}
+
+document.getElementById('addKeyBtn').addEventListener('click', () => addKey());
+
+function getKeys() {
+  return [...document.querySelectorAll('.key-row')].map(row => ({
+    platform: row.querySelector('.platform-select').options[row.querySelector('.platform-select').selectedIndex].text,
+    url: row.querySelector('.rtmp-url').value.trim(),
+    key: row.querySelector('.stream-key').value.trim()
+  })).filter(k => k.url && k.key);
+}
+
+function checkStartReady() {
+  const ready = savedPath && getKeys().length > 0 && !streaming;
+  document.getElementById('startBtn').disabled = !ready;
+}
+
+document.querySelectorAll('.key-row').forEach(() => {});
+document.getElementById('keysList').addEventListener('input', checkStartReady);
+
+// Start / Stop
+document.getElementById('startBtn').addEventListener('click', async () => {
+  const keys = getKeys();
+  if (!keys.length) { log('Hiç geçerli key girilmedi!', 'err'); return; }
+  if (!savedPath) { log('Önce bir medya seç!', 'err'); return; }
+
+  log(`${keys.length} platforma yayın başlatılıyor...`);
+
+  try {
+    const res = await fetch('/api/start-stream', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ keys, mediaPath: savedPath, mediaType })
+    });
+    const d = await res.json();
+
+    if (!d.success) { log('Hata: ' + (d.error || 'Bilinmeyen hata'), 'err'); return; }
+
+    streaming = true;
+    document.getElementById('startBtn').disabled = true;
+    document.getElementById('stopBtn').disabled = false;
+    document.getElementById('liveDot').classList.remove('off');
+    document.getElementById('liveLabel').textContent = 'LIVE';
+
+    // Tags
+    const tags = document.getElementById('streamTags');
+    tags.innerHTML = '';
+    d.streams.forEach(s => {
+      tags.innerHTML += `<div class="stream-tag"><span class="tag-dot"></span>${s.platform}</div>`;
+    });
+
+    document.getElementById('activeCount').textContent = d.streams.length;
+
+    // Timer
+    seconds = 0;
+    timerInterval = setInterval(() => {
+      seconds++;
+      const m = String(Math.floor(seconds/60)).padStart(2,'0');
+      const s2 = String(seconds%60).padStart(2,'0');
+      document.getElementById('streamTime').textContent = `${m}:${s2}`;
+    }, 1000);
+
+    log(`Yayın başladı! ${d.streams.length} platform aktif.`, 'ok');
+    pollStatus();
+
+  } catch(e) {
+    log('Hata: ' + e.message, 'err');
+  }
+});
+
+document.getElementById('stopBtn').addEventListener('click', stopAll);
+
+async function stopAll() {
+  await fetch('/api/stop-all', { method: 'POST' });
+  streaming = false;
+  clearInterval(timerInterval);
+  document.getElementById('startBtn').disabled = false;
+  document.getElementById('stopBtn').disabled = true;
+  document.getElementById('liveDot').classList.add('off');
+  document.getElementById('liveLabel').textContent = 'OFFLINE';
+  document.getElementById('activeCount').textContent = '0';
+  document.getElementById('streamTags').innerHTML = '';
+  log('Tüm yayınlar durduruldu.', 'err');
+}
+
+async function pollStatus() {
+  if (!streaming) return;
+  const r = await fetch('/api/status');
+  const d = await r.json();
+  document.getElementById('activeCount').textContent = d.active;
+  if (d.active === 0 && streaming) {
+    streaming = false;
+    clearInterval(timerInterval);
+    document.getElementById('liveDot').classList.add('off');
+    document.getElementById('liveLabel').textContent = 'OFFLINE';
+    document.getElementById('startBtn').disabled = false;
+    document.getElementById('stopBtn').disabled = true;
+    log('Tüm yayınlar tamamlandı.', 'ok');
+    return;
+  }
+  if (streaming) setTimeout(pollStatus, 3000);
+}
+
+// Init
+addKey(PLATFORMS[0]);
+addKey(PLATFORMS[1]);
+checkFFmpeg();
+</script>
+</body>
+</html>
